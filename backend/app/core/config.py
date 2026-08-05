@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     """
 
     PROJECT_NAME: str = "CortexAI"
-    VERSION: str = "0.2.0"
+    VERSION: str = "0.4.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     API_V1_STR: str = "/api/v1"
@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "cortex_super_secret_jwt_key_change_in_production_32bytes"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # AI Provider Settings
+    OPENAI_API_KEY: str | None = None
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    DEFAULT_PROVIDER: str = "ollama"
+    DEFAULT_MODEL: str = "llama3"
+    AI_REQUEST_TIMEOUT: float = 60.0
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

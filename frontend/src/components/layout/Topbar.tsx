@@ -18,6 +18,8 @@ export const Topbar: React.FC<TopbarProps> = ({ onOpenMobileNav }) => {
         return 'Dashboard';
       case '/workspaces':
         return 'Workspaces';
+      case '/playground':
+        return 'AI Playground';
       case '/knowledge':
         return 'Knowledge Base';
       case '/workflows':

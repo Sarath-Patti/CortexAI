@@ -1,10 +1,15 @@
 import uuid
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.providers.ollama_provider import OllamaProvider
+from app.ai.providers.openai_provider import OpenAIProvider
+from app.ai.providers.registry import ProviderRegistry
+from app.ai.service import AIService
 from app.auth.security import decode_access_token
 from app.database.session import get_db
 from app.models.user import User
@@ -17,7 +22,9 @@ from app.services.workspace_service import WorkspaceService
 security_scheme = HTTPBearer(auto_error=True)
 
 
-def get_user_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> UserRepository:
+def get_user_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserRepository:
     return UserRepository(db)
 
 
@@ -43,6 +50,20 @@ def get_workspace_service(
     workspace_repo: Annotated[WorkspaceRepository, Depends(get_workspace_repository)],
 ) -> WorkspaceService:
     return WorkspaceService(workspace_repo)
+
+
+@lru_cache
+def get_provider_registry() -> ProviderRegistry:
+    registry = ProviderRegistry()
+    registry.register(OllamaProvider())
+    registry.register(OpenAIProvider())
+    return registry
+
+
+def get_ai_service(
+    registry: Annotated[ProviderRegistry, Depends(get_provider_registry)],
+) -> AIService:
+    return AIService(registry)
 
 
 async def get_current_user(

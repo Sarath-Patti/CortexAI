@@ -7,6 +7,7 @@ import {
   Workflow,
   Settings,
   Cpu,
+  Bot,
   X,
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Workspaces', path: '/workspaces', icon: FolderKanban },
+    { label: 'AI Playground', path: '/playground', icon: Bot },
     { label: 'Knowledge', path: '/knowledge', icon: FileText },
     { label: 'Workflows', path: '/workflows', icon: Workflow },
     { label: 'Settings', path: '/settings', icon: Settings },

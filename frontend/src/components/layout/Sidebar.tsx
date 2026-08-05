@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Bot,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Workspaces', path: '/workspaces', icon: FolderKanban },
+    { label: 'AI Playground', path: '/playground', icon: Bot },
     { label: 'Knowledge', path: '/knowledge', icon: FileText },
     { label: 'Workflows', path: '/workflows', icon: Workflow },
     { label: 'Settings', path: '/settings', icon: Settings },
@@ -100,10 +102,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4 m-3 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl">
           <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 mb-1">
             <Sparkles className="w-4 h-4" />
-            <span className="text-xs font-bold">Enterprise v0.3</span>
+            <span className="text-xs font-bold">Enterprise v0.4</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-            Workspace experience framework.
+            AI Runtime & Provider Abstraction.
           </p>
         </div>
       )}
