@@ -11,19 +11,31 @@ export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const token = localStorage.getItem('cortex_token');
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   };
 
   const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    throw new ApiError(response.status, errorText || response.statusText);
+    if (response.status === 401) {
+      localStorage.removeItem('cortex_token');
+    }
+    const errorData = await response.json().catch(() => null);
+    const message = errorData?.detail || response.statusText || 'API Error';
+    throw new ApiError(response.status, message);
   }
 
   return response.json();

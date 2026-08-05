@@ -1,6 +1,22 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: cortex_db
+    environment:
+      POSTGRES_USER: cortex
+      POSTGRES_PASSWORD: cortex_pass
+      POSTGRES_DB: cortexai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cortex -d cortexai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -13,8 +29,15 @@ services:
       - DEBUG=true
       - API_V1_STR=/api/v1
       - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql+asyncpg://cortex:cortex_pass@db:5432/cortexai
+      - SECRET_KEY=cortex_super_secret_jwt_key_change_in_production_32bytes
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
     volumes:
       - ./backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -28,3 +51,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -3,18 +3,26 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.endpoints import auth, health, users, workspaces
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import logger
+from app.database.base import Base
+from app.database.session import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Application lifespan context manager for startup and shutdown events.
+    Creates database tables if they do not exist.
     """
     logger.info("Starting %s v%s...", settings.PROJECT_NAME, settings.VERSION)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database models initialized successfully.")
     yield
+    await engine.dispose()
     logger.info("Shutting down %s...", settings.PROJECT_NAME)
 
 
@@ -35,8 +43,13 @@ if settings.ALLOWED_ORIGINS:
         allow_headers=["*"],
     )
 
-# Include API Routers
+# Include Versioned API Router under /api/v1
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Also mount endpoint routers without prefix for direct /auth, /users, /workspaces access
+app.include_router(auth.router, prefix="/auth", tags=["Auth Direct"])
+app.include_router(users.router, prefix="/users", tags=["Users Direct"])
+app.include_router(workspaces.router, prefix="/workspaces", tags=["Workspaces Direct"])
 
 
 @app.get("/", tags=["Root"])
