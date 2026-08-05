@@ -4,7 +4,11 @@ import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
+import { Dashboard } from '../pages/Dashboard';
 import { WorkspaceList } from '../pages/WorkspaceList';
+import { Knowledge } from '../pages/Knowledge';
+import { Workflows } from '../pages/Workflows';
+import { Settings } from '../pages/Settings';
 
 export const AppRouter: React.FC = () => {
   return (
@@ -16,6 +20,17 @@ export const AppRouter: React.FC = () => {
 
         {/* Protected Dashboard Routes */}
         <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Dashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/workspaces"
           element={
             <ProtectedRoute>
@@ -26,8 +41,41 @@ export const AppRouter: React.FC = () => {
           }
         />
 
-        {/* Default Fallback Redirect */}
-        <Route path="*" element={<Navigate to="/workspaces" replace />} />
+        <Route
+          path="/knowledge"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Knowledge />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/workflows"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Workflows />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Settings />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback Redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

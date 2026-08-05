@@ -2,15 +2,35 @@
 
 CortexAI is a modern, modular, production-ready web application platform built with Python FastAPI and React + TypeScript.
 
-## Milestone v0.2 – Identity & Persistence
+## Milestone v0.3 – Enterprise Workspace Experience
 
-Milestone v0.2 transforms CortexAI into a SaaS backend by implementing user authentication, PostgreSQL persistence with SQLAlchemy 2.x and Alembic, layered architecture (Repository pattern & Service layer), and workspace management.
+Milestone v0.3 elevates CortexAI into a modern enterprise SaaS application with a sleek, responsive workspace shell, full theme support (Light, Dark, System preference), reusable UI component primitives, collapsible navigation sidebar, personalized dashboard analytics, and tabbed user settings.
 
 ### Key Capabilities
-- **Authentication**: User registration, login, password hashing (`passlib`/`bcrypt`), and JWT access tokens.
-- **Database & Persistence**: PostgreSQL with async SQLAlchemy 2.x, Alembic schema migrations, and relational user-workspace mapping.
-- **Architecture**: Strict separation of concerns via Repositories, Services, Schemas, and Dependency Injection. Routers remain thin controllers.
-- **Frontend App**: Login, Register, Protected Router, Dashboard Shell, and Workspace List/Create UI.
+- **Application Shell**: Collapsible sidebar, sticky topbar with global search and breadcrumbs, user profile dropdown, and responsive mobile drawer navigation.
+- **Navigation Structure**: Active route highlighting for Dashboard (`/`), Workspaces (`/workspaces`), Knowledge (`/knowledge`), Workflows (`/workflows`), and Settings (`/settings`).
+- **Personalized Dashboard**: Welcome banner, statistics overview cards, quick actions bar, recent workspaces grid, and real-time activity timeline.
+- **Workspace Experience**: Responsive grid layout with instant search filtering, multi-criteria sorting (Newest, Oldest, A-Z, Z-A), empty state handling, and interactive Create Workspace modal.
+- **Settings & Preferences**: Tabbed configuration views for User Profile (functional), Theme Appearance (functional), Notifications, Preferences, and API Keys preview.
+- **Theme Support**: Class-based theme engine (`ThemeContext`) with light, dark, and system auto-detection modes persisted via `localStorage`.
+- **Reusable UI Design System**: Component primitives (`Button`, `Card`, `Input`, `Badge`, `Modal`, `Dropdown`, `Tabs`) enforcing consistent styling and accessible form controls.
+
+## Screenshots (UI Preview)
+
+```text
++-----------------------------------------------------------------------------------+
+|  [Cpu] CortexAI      [ Search workspaces... ]               (Sun/Moon)  [Jane D.] |
++------------------+----------------------------------------------------------------+
+|  [#] Dashboard   |  Welcome back, Jane!                                           |
+|  [#] Workspaces  |  +-------------------+  +-------------------+  +---------------+ |
+|  [#] Knowledge   |  | Workspaces: 4     |  | Documents: 24     |  | Workflows: 8  | |
+|  [#] Workflows   |  +-------------------+  +-------------------+  +---------------+ |
+|  [*] Settings    |  Recent Workspaces                                             |
+|                  |  +-------------------+  +-------------------+                  |
+|                  |  | Core Analytics    |  | Finance Pipeline  |                  |
+|                  |  +-------------------+  +-------------------+                  |
++------------------+----------------------------------------------------------------+
+```
 
 ## Directory Structure
 ```text
@@ -55,13 +75,17 @@ CortexAI/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                # API client & auth/workspace service endpoints
-│   │   ├── components/         # Layout & ProtectedRoute components
-│   │   ├── context/            # AuthContext state provider
-│   │   ├── pages/              # Login, Register, WorkspaceList pages
-│   │   ├── router/             # React Router setup
+│   │   ├── components/
+│   │   │   ├── auth/           # ProtectedRoute navigation guard
+│   │   │   ├── layout/         # Sidebar, Topbar, UserMenu, MobileNav, DashboardLayout
+│   │   │   └── ui/             # Reusable UI primitives (Button, Card, Input, Modal, Dropdown, Tabs, Badge)
+│   │   ├── context/            # AuthContext & ThemeContext
+│   │   ├── hooks/              # Custom hooks (useTheme)
+│   │   ├── pages/              # Dashboard, WorkspaceList, Knowledge, Workflows, Settings, Login, Register
+│   │   ├── router/             # React Router configuration
 │   │   ├── types/              # TypeScript interface contracts
 │   │   ├── App.tsx
-│   │   ├── index.css
+│   │   ├── index.css           # CSS variables, glass panel utility classes, animations
 │   │   └── main.tsx
 │   ├── .env.example
 │   ├── Dockerfile
