@@ -32,11 +32,9 @@ CortexAI/
 │   │   └── main.tsx
 │   ├── .env.example           # Frontend environment template
 │   ├── Dockerfile             # Multi-stage Node/Nginx container
+│   ├── nginx.conf             # Nginx server configuration
 │   ├── package.json           # Node dependencies & scripts
 │   └── vite.config.ts         # Vite bundler configuration
-├── infrastructure/
-│   └── docker/
-│       └── nginx.conf         # Nginx server configuration
 └── docker-compose.yml         # Local orchestration
 ```
 

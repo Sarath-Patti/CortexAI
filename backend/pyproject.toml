@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cortexai-backend"
-version = "0.1.0"
+version = "0.2.0"
 description = "CortexAI Backend Service"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,13 @@ dependencies = [
     "pydantic>=2.6.0",
     "pydantic-settings>=2.2.0",
     "python-dotenv>=1.0.0",
+    "sqlalchemy[asyncio]>=2.0.28",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "pyjwt>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.1.2",
+    "pwdlib[argon2,bcrypt]>=0.2.0",
 ]
 
 [tool.pytest.ini_options]
