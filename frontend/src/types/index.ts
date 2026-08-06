@@ -117,6 +117,14 @@ export interface RetrievedChunk {
   metadata: Record<string, any>;
 }
 
+export interface CitationItem {
+  filename: string;
+  page_number: number;
+  similarity_score: number;
+  chunk_identifier: string;
+  snippet?: string;
+}
+
 export interface SearchResponse {
   query: string;
   chunks: RetrievedChunk[];
@@ -141,4 +149,52 @@ export interface KnowledgeChatResponse {
   request_id: string;
   retrieved_chunks: RetrievedChunk[];
   usage?: UsageInfo;
+}
+
+// Conversation Intelligence Types (v0.6)
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  provider?: string;
+  model?: string;
+  token_usage?: UsageInfo;
+  latency_ms?: number;
+  citations?: CitationItem[];
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  workspace_id?: string | null;
+  owner_id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  messages?: Message[];
+}
+
+export interface SendMessageRequest {
+  prompt: string;
+  system_prompt?: string;
+  provider?: string;
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  rag_enabled?: boolean;
+  top_k?: number;
+}
+
+export interface SendMessageResponse {
+  conversation_id: string;
+  user_message: Message;
+  assistant_message: Message;
+}
+
+export interface ConversationExportResponse {
+  conversation_id: string;
+  title: string;
+  format: string;
+  export_data: string;
 }

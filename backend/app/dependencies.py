@@ -11,6 +11,8 @@ from app.ai.providers.openai_provider import OpenAIProvider
 from app.ai.providers.registry import ProviderRegistry
 from app.ai.service import AIService
 from app.auth.security import decode_access_token
+from app.conversations.repository import ConversationRepository
+from app.conversations.service import ConversationService
 from app.database.session import get_db
 from app.knowledge.service import KnowledgeService
 from app.models.user import User
@@ -20,7 +22,7 @@ from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 from app.services.workspace_service import WorkspaceService
 
-security_scheme = HTTPBearer(auto_error=True)
+security_scheme = HTTPBearer(auto_error=False)
 
 
 def get_user_repository(
@@ -73,16 +75,43 @@ def get_knowledge_service(
     return KnowledgeService(db=db)
 
 
+def get_conversation_repository(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationRepository:
+    return ConversationRepository(db)
+
+
+def get_conversation_service(
+    repo: Annotated[ConversationRepository, Depends(get_conversation_repository)],
+    ai_service: Annotated[AIService, Depends(get_ai_service)],
+    knowledge_service: Annotated[KnowledgeService, Depends(get_knowledge_service)],
+) -> ConversationService:
+    return ConversationService(
+        repo=repo, ai_service=ai_service, knowledge_service=knowledge_service
+    )
+
+
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security_scheme)],
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(security_scheme)
+    ],
     user_service: Annotated[UserService, Depends(get_user_service)],
+    token: str | None = None,
 ) -> User:
     """
-    Dependency that decodes the JWT access token from the Authorization header
-    and retrieves the currently authenticated User object.
+    Dependency that decodes JWT access token from Authorization header or
+    query parameter, retrieving authenticated User object.
     """
-    token = credentials.credentials
-    payload = decode_access_token(token)
+    raw_token = credentials.credentials if credentials else token
+
+    if not raw_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token was not provided.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = decode_access_token(raw_token)
 
     if not payload:
         raise HTTPException(

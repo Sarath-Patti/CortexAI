@@ -3,7 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import ai, auth, knowledge, users, workspaces
+from app.api.v1.endpoints import (
+    ai,
+    auth,
+    conversations,
+    knowledge,
+    users,
+    workspaces,
+)
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import logger
@@ -52,6 +59,9 @@ app.include_router(users.router, prefix="/users", tags=["Users Direct"])
 app.include_router(workspaces.router, prefix="/workspaces", tags=["Workspaces Direct"])
 app.include_router(ai.router, prefix="/chat", tags=["AI Direct"])
 app.include_router(knowledge.router, prefix="/knowledge", tags=["Knowledge Direct"])
+app.include_router(
+    conversations.router, prefix="/conversations", tags=["Conversations Direct"]
+)
 
 
 @app.get("/", tags=["Root"])

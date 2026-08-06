@@ -1,116 +1,64 @@
 # CortexAI Architecture Documentation
 
 ## Overview
-CortexAI is structured as a decoupled client-server architecture with a Python FastAPI backend and a React + TypeScript frontend. Milestone v0.5 introduces Document Intelligence and RAG Foundation, providing end-to-end document parsing, recursive text chunking, sentence embeddings, ChromaDB vector indexing, and RAG-augmented query answering over the existing v0.4 AI Runtime.
+CortexAI is structured as a decoupled client-server architecture with a Python FastAPI backend and a React + TypeScript frontend. Milestone v0.6 introduces Conversation Intelligence, providing multi-turn conversation persistence, prompt history assembly, Server-Sent Events (SSE) streaming, RAG source citations, and conversation export capabilities.
 
-## RAG & Document Intelligence Pipeline
+## Conversation Intelligence Pipeline
 
 ```text
-               +-----------------------------------+
-               |  Document Upload (PDF/DOCX/TXT/MD)|
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |          DocumentParser           |
-               |      (Extracts UTF-8 Text)        |
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |          DocumentChunker          |
-               |   (~800 Chunks, ~150 Overlap)     |
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |         EmbeddingService          |
-               |    (all-MiniLM-L6-v2 384-dim)     |
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |          ChromaRetriever          |
-               |   (Cosine Vector Similarity)      |
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |           PromptBuilder           |
-               |   (Augments System Prompt)        |
-               +-----------------------------------+
-                                 |
-                                 v
-               +-----------------------------------+
-               |             AIService             |
-               |    (Unified v0.4 AI Runtime)      |
-               +-----------------------------------+
+                        +----------------------------------+
+                        |  User Query / Send Message API   |
+                        +----------------------------------+
+                                         |
+                                         v
+                        +----------------------------------+
+                        |       ConversationService        |
+                        +----------------------------------+
+                                  /              \
+                                 /                \
+                                v                  v
+             +-----------------------+   +-----------------------+
+             |    KnowledgeService   |   | ConversationRepository|
+             |  (RAG Vector Search)  |   | (Fetch Message History|
+             +-----------------------+   +-----------------------+
+                                 \                /
+                                  \              /
+                                   v            v
+                        +----------------------------------+
+                        |         PromptBuilder v2         |
+                        | (System + History + RAG + Prompt)|
+                        +----------------------------------+
+                                         |
+                                         v
+                        +----------------------------------+
+                        |            AIService             |
+                        |    (Unified v0.4 AI Runtime)     |
+                        +----------------------------------+
+                                         |
+                                         v
+                        +----------------------------------+
+                        |   Message DB Record & Citations  |
+                        +----------------------------------+
 ```
 
 ### Components
-1. **`DocumentParser`**: Extracts clean UTF-8 text from PDF (`pypdf`), Word (`python-docx`), plain text, and Markdown files.
-2. **`DocumentChunker`**: Recursively splits parsed text into chunks (target size ~800 characters, overlap ~150 characters) while maintaining page numbers, document IDs, workspace IDs, and filenames in metadata.
-3. **`EmbeddingService`**: Generates 384-dimensional dense vector embeddings using `all-MiniLM-L6-v2`.
-4. **`ChromaRetriever`**: Vector database wrapper (`chromadb`) performing cosine similarity search (Top K=5) over indexed document chunks.
-5. **`KnowledgeService`**: Service layer orchestrating upload ingestion, similarity search, document deletion, and RAG query execution by augmenting system prompts and calling the existing v0.4 `AIService`.
-6. **Frontend Knowledge Hub & Playground RAG**: UI views (`/knowledge` and `/playground`) supporting file drag & drop, upload status tracking, vector search, document deletion, and RAG-augmented AI chat.
+1. **Conversation Models & Repository (`app/models/conversation.py`, `app/conversations/repository.py`)**:
+   - `Conversation`: Persistent thread belonging to a User and Workspace.
+   - `Message`: Turn object storing role, content, provider, model, token usage, latency (ms), and source citations.
+2. **PromptBuilder v2 (`app/ai/prompts/builder.py`)**:
+   - Assembles system prompt, prior conversation turns, RAG document context, and the current user prompt into structured messages for provider consumption.
+3. **Conversation Engine Service (`app/conversations/service.py`)**:
+   - Handles multi-turn chat completions, SSE streaming (`stream_message_sse`), dynamic title generation, and Markdown/JSON conversation exports.
+4. **Conversation UI Workspace (`frontend/src/components/chat/`, `frontend/src/pages/ConversationsPage.tsx`)**:
+   - Modular React chat workspace containing `ConversationSidebar`, `ChatWindow`, `MessageBubble`, `CitationCard`, and `StreamingMessage`.
 
-## Directory Layout
-```text
-CortexAI/
-├── .github/
-│   └── workflows/
-│       └── ci.yml             # GitHub Actions CI Workflow
-├── backend/
-│   ├── alembic/               # Database migrations
-│   ├── chroma/                # ChromaDB vector store
-│   ├── uploads/               # Uploaded files directory
-│   ├── app/
-│   │   ├── ai/                # AI Runtime & Provider Abstraction Module (v0.4)
-│   │   ├── knowledge/         # Document Intelligence & RAG Foundation (v0.5)
-│   │   │   ├── chunker.py
-│   │   │   ├── embeddings.py
-│   │   │   ├── exceptions.py
-│   │   │   ├── ingestion.py
-│   │   │   ├── parser.py
-│   │   │   ├── retriever.py
-│   │   │   ├── schemas.py
-│   │   │   ├── service.py
-│   │   │   └── __init__.py
-│   │   ├── api/
-│   │   │   └── v1/            # Versioned API routes (/knowledge, /chat, /auth, /workspaces)
-│   │   ├── auth/              # Security & JWT handling
-│   │   ├── core/              # Config, logging, settings
-│   │   ├── database/          # Async SQLAlchemy engine & sessions
-│   │   ├── models/            # ORM models (User, Workspace, Document, DocumentChunk)
-│   │   ├── repositories/      # Data access layer
-│   │   ├── schemas/           # Pydantic validation models
-│   │   ├── services/          # Business logic services
-│   │   ├── dependencies.py    # FastAPI dependencies
-│   │   └── main.py            # FastAPI entry point
-│   ├── .env.example
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   └── requirements.txt
-├── docs/                      # Architectural documentation
-├── frontend/
-│   ├── src/
-│   │   ├── api/               # API fetch client & service endpoints (knowledge.ts, ai.ts)
-│   │   ├── components/
-│   │   │   ├── auth/          # ProtectedRoute guard
-│   │   │   ├── layout/        # Sidebar, Topbar, UserMenu, MobileNav, DashboardLayout
-│   │   │   └── ui/            # Reusable primitives
-│   │   ├── context/           # AuthContext & ThemeContext
-│   │   ├── hooks/             # Custom hooks (useAuth, useTheme)
-│   │   ├── pages/             # Knowledge, Playground, Dashboard, WorkspaceList, Workflows, Settings
-│   │   ├── router/            # React Router configuration
-│   │   ├── types/             # TypeScript definitions
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── .env.example
-│   ├── Dockerfile
-│   ├── nginx.conf             # Nginx server configuration
-│   ├── package.json
-│   └── vite.config.ts
-└── docker-compose.yml         # Local orchestration
-```
+## API Endpoints Summary
+- `POST /api/v1/conversations`: Create conversation
+- `GET /api/v1/conversations`: List conversations
+- `GET /api/v1/conversations/search`: Search conversations by title
+- `GET /api/v1/conversations/{id}`: Get conversation details & history
+- `PATCH /api/v1/conversations/{id}`: Rename conversation
+- `DELETE /api/v1/conversations/{id}`: Delete conversation
+- `POST /api/v1/conversations/{id}/messages`: Post message & get completion
+- `GET /api/v1/conversations/{id}/stream`: Stream response via SSE
+- `GET /api/v1/conversations/{id}/export`: Export as Markdown or JSON

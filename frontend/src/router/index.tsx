@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Login } from '../pages/Login';
 import { Register } from '../pages/Register';
 import { Dashboard } from '../pages/Dashboard';
+import { ConversationsPage } from '../pages/ConversationsPage';
 import { WorkspaceList } from '../pages/WorkspaceList';
 import { Playground } from '../pages/Playground';
 import { Knowledge } from '../pages/Knowledge';
@@ -26,6 +27,17 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute>
               <DashboardLayout>
                 <Dashboard />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/conversations"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ConversationsPage />
               </DashboardLayout>
             </ProtectedRoute>
           }

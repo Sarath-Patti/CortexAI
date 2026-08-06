@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Sparkles,
   Bot,
+  MessageSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { label: 'Conversations', path: '/conversations', icon: MessageSquare },
     { label: 'Workspaces', path: '/workspaces', icon: FolderKanban },
     { label: 'AI Playground', path: '/playground', icon: Bot },
     { label: 'Knowledge', path: '/knowledge', icon: FileText },
@@ -102,10 +104,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-4 m-3 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl">
           <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 mb-1">
             <Sparkles className="w-4 h-4" />
-            <span className="text-xs font-bold">Enterprise v0.4</span>
+            <span className="text-xs font-bold">Enterprise v0.6</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-            AI Runtime & Provider Abstraction.
+            Conversation Intelligence Platform.
           </p>
         </div>
       )}
