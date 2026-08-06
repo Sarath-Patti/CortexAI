@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getModelsApi, getProvidersApi, sendChatApi } from '../api/ai';
-import { ChatResponse, ModelInfo, ProviderInfo } from '../types';
+import { sendKnowledgeChatApi } from '../api/knowledge';
+import { ChatResponse, ModelInfo, ProviderInfo, RetrievedChunk } from '../types';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -15,6 +16,7 @@ import {
   Cpu,
   RefreshCw,
   AlertCircle,
+  Database,
 } from 'lucide-react';
 
 export const Playground: React.FC = () => {
@@ -31,11 +33,14 @@ export const Playground: React.FC = () => {
   const [temperature, setTemperature] = useState<number>(0.7);
   const [maxTokens, setMaxTokens] = useState<number>(1000);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
+  const [knowledgeMode, setKnowledgeMode] = useState<boolean>(false);
+  const [topK, setTopK] = useState<number>(5);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchingMeta, setFetchingMeta] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [chatResponse, setChatResponse] = useState<ChatResponse | null>(null);
+  const [retrievedChunks, setRetrievedChunks] = useState<RetrievedChunk[]>([]);
   const [streamedText, setStreamedText] = useState<string>('');
 
   // Initial load of providers and models
@@ -114,11 +119,33 @@ export const Playground: React.FC = () => {
     setLoading(true);
     setError(null);
     setChatResponse(null);
+    setRetrievedChunks([]);
     setStreamedText('');
 
     try {
-      if (isStreaming) {
-        // Simple streaming delegation preview
+      if (knowledgeMode) {
+        // RAG Knowledge Mode
+        const kResponse = await sendKnowledgeChatApi({
+          prompt: userPrompt,
+          system_prompt: systemPrompt,
+          provider: selectedProvider,
+          model: selectedModel,
+          temperature,
+          max_tokens: maxTokens,
+          top_k: topK,
+        });
+
+        setChatResponse({
+          response: kResponse.response,
+          provider: kResponse.provider,
+          model: kResponse.model,
+          latency_ms: kResponse.latency_ms,
+          request_id: kResponse.request_id,
+          usage: kResponse.usage,
+        });
+        setRetrievedChunks(kResponse.retrieved_chunks || []);
+      } else if (isStreaming) {
+        // Standard Streaming Mode
         const response = await sendChatApi({
           prompt: userPrompt,
           system_prompt: systemPrompt,
@@ -129,7 +156,6 @@ export const Playground: React.FC = () => {
           stream: false,
         });
 
-        // Simulate streaming token output in UI panel
         const words = response.response.split(' ');
         let accumulated = '';
         for (let i = 0; i < words.length; i++) {
@@ -140,6 +166,7 @@ export const Playground: React.FC = () => {
 
         setChatResponse(response);
       } else {
+        // Standard Direct Completion
         const response = await sendChatApi({
           prompt: userPrompt,
           system_prompt: systemPrompt,
@@ -165,11 +192,11 @@ export const Playground: React.FC = () => {
         <div>
           <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>AI Provider Runtime v0.4</span>
+            <span>AI Provider Runtime v0.5</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">AI Playground</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Test and evaluate prompt completions across unified AI providers and models.
+            Test prompt completions with optional Knowledge Base RAG document retrieval.
           </p>
         </div>
         <Button
@@ -194,6 +221,42 @@ export const Playground: React.FC = () => {
                 Runtime Configuration
               </h2>
             </div>
+
+            {/* Knowledge Mode Toggle */}
+            <label className="flex items-center justify-between p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 cursor-pointer">
+              <div>
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <Database className="w-3.5 h-3.5" />
+                  <span>Knowledge RAG Mode</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Retrieve context from ChromaDB
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={knowledgeMode}
+                onChange={(e) => setKnowledgeMode(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+            </label>
+
+            {knowledgeMode && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Retrieved Chunks (Top K)
+                </label>
+                <select
+                  value={topK}
+                  onChange={(e) => setTopK(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 font-medium"
+                >
+                  <option value={3}>Top 3 Chunks</option>
+                  <option value={5}>Top 5 Chunks</option>
+                  <option value={10}>Top 10 Chunks</option>
+                </select>
+              </div>
+            )}
 
             {/* Provider Selector */}
             <div className="space-y-1.5">
@@ -265,23 +328,25 @@ export const Playground: React.FC = () => {
               />
             </div>
 
-            {/* Streaming Toggle */}
-            <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-              <div>
-                <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Streaming Mode
+            {/* Streaming Toggle (disabled in Knowledge mode) */}
+            {!knowledgeMode && (
+              <label className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                    Streaming Mode
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Simulate SSE chunked output
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Simulate SSE chunked output
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={isStreaming}
-                onChange={(e) => setIsStreaming(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-              />
-            </label>
+                <input
+                  type="checkbox"
+                  checked={isStreaming}
+                  onChange={(e) => setIsStreaming(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+              </label>
+            )}
           </Card>
         </div>
 
@@ -304,14 +369,14 @@ export const Playground: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                User Prompt
+                User Prompt / Query
               </label>
               <textarea
                 rows={4}
                 value={userPrompt}
                 onChange={(e) => setUserPrompt(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
-                placeholder="Enter user prompt query..."
+                placeholder="Enter question or prompt query..."
               />
             </div>
 
@@ -323,7 +388,7 @@ export const Playground: React.FC = () => {
                 className="w-full sm:w-auto"
               >
                 <Send className="w-4 h-4" />
-                <span>Generate Completion</span>
+                <span>{knowledgeMode ? 'Execute RAG Completion' : 'Generate Completion'}</span>
               </Button>
             </div>
           </Card>
@@ -334,6 +399,35 @@ export const Playground: React.FC = () => {
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <span>{error}</span>
             </div>
+          )}
+
+          {/* Retrieved Chunks Display (when Knowledge RAG mode enabled) */}
+          {retrievedChunks.length > 0 && (
+            <Card className="space-y-4 border-indigo-500/30">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                <div className="flex items-center space-x-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <Database className="w-4 h-4" />
+                  <span>Retrieved RAG Context Chunks ({retrievedChunks.length})</span>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {retrievedChunks.map((c, i) => (
+                  <div key={i} className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-slate-300">
+                        {c.metadata.filename || 'Document'} (Page {c.metadata.page_number || 1})
+                      </span>
+                      <Badge variant="emerald" size="sm">
+                        Score: {(c.similarity_score * 100).toFixed(1)}%
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono line-clamp-3">
+                      {c.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           {/* Completion Output Panel */}

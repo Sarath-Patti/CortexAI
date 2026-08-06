@@ -2,33 +2,53 @@
 
 CortexAI is a modern, modular, production-ready web application platform built with Python FastAPI and React + TypeScript.
 
-## Milestone v0.4 – AI Runtime & Provider Abstraction
+## Milestone v0.5 – Document Intelligence (RAG Foundation)
 
-Milestone v0.4 establishes the core AI infrastructure for CortexAI. It provides a production-grade provider abstraction layer supporting multiple LLM providers (OpenAI, Ollama) behind a single unified interface (`BaseLLMProvider`). The runtime handles provider selection, model resolution, prompt construction, structured latency logging, token usage tracking, and SSE streaming.
+Milestone v0.5 introduces Retrieval-Augmented Generation (RAG), enabling CortexAI to ingest, parse, chunk, embed, and answer questions over uploaded enterprise documents (PDF, DOCX, TXT, MD). The architecture reuses the v0.4 AI Runtime and Provider Abstraction Layer without bypassing the Prompt Builder.
 
 ### Key Capabilities
-- **Provider Abstraction**: Unified `BaseLLMProvider` interface defining `generate()`, `stream()`, `health_check()`, and `list_models()`.
-- **Pluggable Providers**: Pluggable provider implementations (`OpenAIProvider`, `OllamaProvider`) that can be swapped without altering business logic or API contracts.
-- **Provider Registry**: `ProviderRegistry` managing provider lookup, health status, default selection, and model discovery.
-- **Prompt Builder**: `PromptBuilder` separating prompt composition (system prompts, user queries, conversation history) from provider execution.
-- **AI Conversation Service**: `AIService` managing model selection, prompt building, execution delegation, latency timing (in ms), and structured logging.
-- **Unified API Endpoints**: `POST /api/v1/chat` (supporting completion and SSE streaming), `GET /api/v1/chat/providers`, and `GET /api/v1/chat/models`.
-- **AI Playground UI**: Enterprise Playground page (`/playground`) featuring provider & model selectors, temperature slider, max token inputs, system/user prompt textareas, streaming mode toggle, and completion output panel with latency & token usage metrics.
+- **Document Ingestion Pipeline**: Ingestion pipeline (`IngestionPipeline`) parsing PDF (`pypdf`), Word (`python-docx`), TXT, and Markdown files into plain UTF-8 text.
+- **Recursive Text Chunker**: Recursive chunking algorithm (`DocumentChunker`) with target chunk size ≈ 800 characters, overlap ≈ 150 characters, and rich metadata preservation (filename, page number, workspace, document ID, chunk index).
+- **Dense Vector Embeddings**: Embeddings generator (`EmbeddingService`) generating 384-dimensional vector embeddings using `all-MiniLM-L6-v2`.
+- **ChromaDB Vector Store**: Vector database (`ChromaRetriever`) storing document chunk text, embeddings, and metadata with cosine similarity search.
+- **RAG Knowledge Service**: `KnowledgeService` orchestrating upload, parsing, chunking, embedding generation, vector retrieval, and augmented prompt construction through the existing v0.4 `PromptBuilder` and `AIService`.
+- **Knowledge API Endpoints**:
+  - `POST /api/v1/knowledge/upload` (Multipart document ingestion)
+  - `POST /api/v1/knowledge/search` (Vector similarity search)
+  - `POST /api/v1/knowledge/chat` (RAG-augmented Q&A)
+  - `GET /api/v1/knowledge/documents` (List ingested documents)
+  - `DELETE /api/v1/knowledge/documents/{id}` (Delete database record, local file, and ChromaDB vectors)
+- **Knowledge Management UI**: Interactive Drag & Drop file uploader, progress indicator, document inventory table, vector similarity search tool, and modal delete confirmation.
+- **AI Playground RAG Integration**: Added "Knowledge RAG Mode" toggle in AI Playground (`/playground`), routing completions through `/knowledge/chat` and displaying retrieved context chunks with similarity scores.
 
-## Screenshots (UI Preview)
+## Architecture Diagram (RAG Pipeline)
 
 ```text
-+-----------------------------------------------------------------------------------+
-|  [Cpu] CortexAI      [ Search workspaces... ]               (Sun/Moon)  [Jane D.] |
-+------------------+----------------------------------------------------------------+
-|  [#] Dashboard   |  AI Playground (v0.4 Runtime)                                  |
-|  [#] Workspaces  |  +-------------------+  +------------------------------------+ |
-|  [*] Playground  |  | Provider: OLLAMA  |  | Model Output Response              | |
-|  [#] Knowledge   |  | Model: Llama 3    |  | [Ollama - llama3]                  | |
-|  [#] Workflows   |  | Temp: 0.7         |  | Benefits of provider abstraction.. | |
-|  [#] Settings    |  | Max Tokens: 1000  |  | Latency: 14.2 ms | Total: 180 tokens| |
-|                  |  +-------------------+  +------------------------------------+ |
-+------------------+----------------------------------------------------------------+
+ Upload (PDF/DOCX/TXT/MD)
+         │
+         ▼
+  DocumentParser ──────► Extracts UTF-8 Text
+         │
+         ▼
+  DocumentChunker ─────► ~800 Chunks (~150 Overlap)
+         │
+         ▼
+ EmbeddingService ────► all-MiniLM-L6-v2 (384-dim)
+         │
+         ▼
+  ChromaDB / DB ──────► Vector Index & Metadata
+         │
+         ▼
+  ChromaRetriever ────► Similarity Search (Top-K=5)
+         │
+         ▼
+   PromptBuilder ─────► Injects Retrieved Context
+         │
+         ▼
+     AIService ───────► Unified v0.4 AI Runtime
+         │
+         ▼
+   LLM Provider ──────► OpenAI / Ollama Completion
 ```
 
 ## Directory Structure
@@ -38,40 +58,39 @@ CortexAI/
 │   └── workflows/
 │       └── ci.yml              # CI workflow for backend/frontend
 ├── backend/
-│   ├── alembic/                # Alembic database migrations
+│   ├── alembic/                # Database migrations
+│   ├── chroma/                 # ChromaDB local vector storage directory
+│   ├── uploads/                # Uploaded local file storage directory
 │   ├── app/
-│   │   ├── ai/                 # Core AI Runtime & Provider Abstraction Module
-│   │   │   ├── prompts/        # PromptBuilder & PromptTemplate implementations
-│   │   │   │   ├── builder.py
-│   │   │   │   ├── templates.py
-│   │   │   │   └── __init__.py
-│   │   │   ├── providers/      # Pluggable LLM Providers & Registry
-│   │   │   │   ├── base.py
-│   │   │   │   ├── ollama_provider.py
-│   │   │   │   ├── openai_provider.py
-│   │   │   │   ├── registry.py
-│   │   │   │   └── __init__.py
-│   │   │   ├── exceptions.py   # AI domain exceptions
-│   │   │   ├── schemas.py      # ChatRequest, ChatResponse, ProviderInfo, ModelInfo
-│   │   │   ├── service.py      # AIService conversation orchestrator
+│   │   ├── ai/                 # Core AI Runtime & Provider Abstraction Module (v0.4)
+│   │   ├── knowledge/          # Document Intelligence & RAG Foundation (v0.5)
+│   │   │   ├── chunker.py      # Recursive text chunker (~800 chars, ~150 overlap)
+│   │   │   ├── embeddings.py   # SentenceTransformers embedding generator
+│   │   │   ├── exceptions.py   # Knowledge domain exceptions
+│   │   │   ├── ingestion.py    # Parse -> Chunk -> Embed -> Vector index pipeline
+│   │   │   ├── parser.py       # PDF, DOCX, TXT, MD text parser
+│   │   │   ├── retriever.py    # ChromaDB vector retriever & similarity search
+│   │   │   ├── schemas.py      # Upload, Search, Chat RAG schemas
+│   │   │   ├── service.py      # KnowledgeService orchestrator
 │   │   │   └── __init__.py
 │   │   ├── api/
-│   │   │   └── v1/             # API v1 routers & endpoints
+│   │   │   └── v1/             # Versioned API routes & endpoints
 │   │   │       ├── endpoints/
 │   │   │       │   ├── ai.py   # AI endpoints (/chat, /chat/providers, /chat/models)
 │   │   │       │   ├── auth.py
 │   │   │       │   ├── health.py
+│   │   │       │   ├── knowledge.py # Knowledge RAG endpoints
 │   │   │       │   ├── users.py
 │   │   │       │   └── workspaces.py
 │   │   │       └── router.py
 │   │   ├── auth/               # Security & JWT token functions
-│   │   ├── core/               # Configuration (OpenAI/Ollama settings) & Logging
+│   │   ├── core/               # Configuration & Logging
 │   │   ├── database/           # Async SQLAlchemy Engine & Session
-│   │   ├── models/             # ORM Models (User, Workspace)
+│   │   ├── models/             # ORM Models (User, Workspace, Document, DocumentChunk)
 │   │   ├── repositories/       # Data Access Repositories
 │   │   ├── schemas/            # Pydantic Schemas
 │   │   ├── services/           # Domain Services
-│   │   ├── dependencies.py     # Dependency Injection (get_ai_service)
+│   │   ├── dependencies.py     # Dependency Injection (get_knowledge_service, get_ai_service)
 │   │   └── main.py             # FastAPI Application Entry Point
 │   ├── .env.example
 │   ├── alembic.ini
@@ -82,14 +101,14 @@ CortexAI/
 │   └── architecture.md         # System Architecture documentation
 ├── frontend/
 │   ├── src/
-│   │   ├── api/                # API client & AI endpoints (ai.ts)
+│   │   ├── api/                # API client & knowledge endpoints (knowledge.ts, ai.ts)
 │   │   ├── components/
-│   │   │   ├── auth/           # ProtectedRoute navigation guard
+│   │   │   ├── auth/           # ProtectedRoute guard
 │   │   │   ├── layout/         # Sidebar, Topbar, UserMenu, MobileNav, DashboardLayout
 │   │   │   └── ui/             # Reusable UI primitives
 │   │   ├── context/            # AuthContext & ThemeContext
 │   │   ├── hooks/              # Custom hooks (useAuth, useTheme)
-│   │   ├── pages/              # Playground, Dashboard, WorkspaceList, Knowledge, Workflows, Settings
+│   │   ├── pages/              # Knowledge, Playground, Dashboard, WorkspaceList, Workflows, Settings
 │   │   ├── router/             # React Router configuration
 │   │   ├── types/              # TypeScript interface contracts
 │   │   ├── App.tsx
@@ -113,7 +132,11 @@ CortexAI/
 | `GET` | `/api/v1/users/me` | Fetch authenticated user profile | Yes |
 | `POST` | `/api/v1/workspaces` | Create new workspace | Yes |
 | `GET` | `/api/v1/workspaces` | List current user's workspaces | Yes |
-| `GET` | `/api/v1/workspaces/{id}` | Get specific workspace details | Yes |
+| `POST` | `/api/v1/knowledge/upload` | Multipart document upload & ingestion | Yes |
+| `POST` | `/api/v1/knowledge/search` | Vector similarity search | Yes |
+| `POST` | `/api/v1/knowledge/chat` | RAG-augmented completion via AI Runtime | Yes |
+| `GET` | `/api/v1/knowledge/documents` | List ingested documents | Yes |
+| `DELETE` | `/api/v1/knowledge/documents/{id}` | Delete document and vector embeddings | Yes |
 | `POST` | `/api/v1/chat` | Generate AI completion (SSE streaming supported) | Yes |
 | `GET` | `/api/v1/chat/providers` | List registered AI providers & health status | Yes |
 | `GET` | `/api/v1/chat/models` | List supported LLM models | Yes |
@@ -128,13 +151,3 @@ docker compose up -d
 - Backend API: `http://localhost:8000`
 - Interactive Swagger Docs: `http://localhost:8000/docs`
 - PostgreSQL: `localhost:5432`
-
-### Environment Configuration (AI Providers)
-Set the following environment variables in `backend/.env`:
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OLLAMA_BASE_URL=http://localhost:11434
-DEFAULT_PROVIDER=ollama
-DEFAULT_MODEL=llama3
-AI_REQUEST_TIMEOUT=60.0
-```

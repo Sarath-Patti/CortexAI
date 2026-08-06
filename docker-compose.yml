@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       - PROJECT_NAME=CortexAI
       - ENVIRONMENT=development
@@ -35,6 +37,8 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
     volumes:
       - ./backend/app:/app/app
+      - uploads_data:/app/uploads
+      - chroma_data:/app/chroma
     depends_on:
       db:
         condition: service_healthy
@@ -54,3 +58,5 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
+  chroma_data:

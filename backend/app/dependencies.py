@@ -12,6 +12,7 @@ from app.ai.providers.registry import ProviderRegistry
 from app.ai.service import AIService
 from app.auth.security import decode_access_token
 from app.database.session import get_db
+from app.knowledge.service import KnowledgeService
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.repositories.workspace_repository import WorkspaceRepository
@@ -64,6 +65,12 @@ def get_ai_service(
     registry: Annotated[ProviderRegistry, Depends(get_provider_registry)],
 ) -> AIService:
     return AIService(registry)
+
+
+def get_knowledge_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> KnowledgeService:
+    return KnowledgeService(db=db)
 
 
 async def get_current_user(

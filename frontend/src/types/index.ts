@@ -88,3 +88,57 @@ export interface ProviderInfo {
   available: boolean;
   models: ModelInfo[];
 }
+
+// Document Intelligence & RAG Types
+export interface Document {
+  id: string;
+  workspace_id?: string | null;
+  owner_id: string;
+  filename: string;
+  file_type: string;
+  size: number;
+  status: string;
+  chunk_count: number;
+  created_at: string;
+}
+
+export interface DocumentUploadResponse {
+  document_id: string;
+  filename: string;
+  file_type: string;
+  size: number;
+  status: string;
+  chunk_count: number;
+}
+
+export interface RetrievedChunk {
+  text: string;
+  similarity_score: number;
+  metadata: Record<string, any>;
+}
+
+export interface SearchResponse {
+  query: string;
+  chunks: RetrievedChunk[];
+}
+
+export interface KnowledgeChatRequest {
+  prompt: string;
+  system_prompt?: string;
+  workspace_id?: string;
+  provider?: string;
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  top_k?: number;
+}
+
+export interface KnowledgeChatResponse {
+  response: string;
+  provider: string;
+  model: string;
+  latency_ms: number;
+  request_id: string;
+  retrieved_chunks: RetrievedChunk[];
+  usage?: UsageInfo;
+}

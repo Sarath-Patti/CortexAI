@@ -1,13 +1,19 @@
-FROM python:3.11-slim as base
+FROM python:3.11-slim AS base
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on
 
 COPY requirements.txt .
+
+# Install CPU-only PyTorch first
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch torchvision torchaudio
+
+# Install the remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
